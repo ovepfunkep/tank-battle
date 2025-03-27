@@ -18,9 +18,15 @@ class Tank {
         this.reloadSpeed = 500; // milliseconds
         this.lastShootTime = 0;
         this.score = 0;
+        this.lastX = x;
+        this.lastY = y;
     }
 
     update() {
+        // Store last position for collision resolution
+        this.lastX = this.x;
+        this.lastY = this.y;
+
         if (this.isPlayer) {
             // Player controls
             if (keys[this.controls.forward]) {
@@ -42,14 +48,35 @@ class Tank {
             this.updateAI();
         }
 
+        // Update position
         this.x += Math.sin(this.angle) * this.speed;
         this.y -= Math.cos(this.angle) * this.speed;
 
+        // Keep tank within bounds
         this.x = Math.max(this.width/2, Math.min(canvas.width - this.width/2, this.x));
         this.y = Math.max(this.height/2, Math.min(canvas.height - this.height/2, this.y));
 
+        // Check collisions with other tanks
+        const allTanks = [...players, ...enemies];
+        for (let otherTank of allTanks) {
+            if (otherTank !== this && this.checkTankCollision(otherTank)) {
+                // Revert to last position if collision occurs
+                this.x = this.lastX;
+                this.y = this.lastY;
+                this.speed *= -0.5; // Bounce back slightly
+                break;
+            }
+        }
+
         this.bullets = this.bullets.filter(bullet => bullet.isActive());
         this.bullets.forEach(bullet => bullet.update());
+    }
+
+    checkTankCollision(otherTank) {
+        const dx = this.x - otherTank.x;
+        const dy = this.y - otherTank.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance < (this.width + otherTank.width) / 2;
     }
 
     updateAI() {
@@ -105,13 +132,14 @@ class Tank {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
         
-        // Draw tank body
+        // Draw tank body (now with a more tank-like shape)
         ctx.fillStyle = this.color;
         ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
         
-        // Draw tank cannon (now pointing forward)
+        // Draw tank tracks
         ctx.fillStyle = '#333';
-        ctx.fillRect(0, -5, this.width/2, 10);
+        ctx.fillRect(-this.width/2, -this.height/2, this.width/6, this.height); // Left track
+        ctx.fillRect(this.width/3, -this.height/2, this.width/6, this.height); // Right track
         
         ctx.restore();
 
